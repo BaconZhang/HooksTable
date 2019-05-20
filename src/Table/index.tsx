@@ -1,14 +1,4 @@
-import React from 'react';
+import Table from './Table';
+export * from './Column';
 
-interface TableProps {
-  columns: any[],
-  dataSource: any[],
-  pagination: object,
-  rowKey: string,
-};
-
-const Table: React.FunctionComponent = (props) => {
-  return <div>
-
-  </div>
-}
+export default Table;
