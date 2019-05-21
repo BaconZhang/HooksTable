@@ -62,9 +62,9 @@ const renderItem = <T extends object>(props: PropsWithChildren<ColumnItemProps<T
 };
 
 export const ColumnItem: FunctionComponent<ColumnItemProps<any>> = <T extends object>(props: PropsWithChildren<ColumnItemProps<T>>) => {
-  const { record, index, dataIndex, titleRender } = props;
+  const { record, index, dataIndex, titleRender, style } = props;
   return <Tooltip title={titleRender ? titleRender(record, index) : dataIndex ? (record[dataIndex] || "") : ""} placement="topLeft">
-    <div className="column-item">
+    <div className="column-item" style={style || {}}>
       {renderItem(props)}
     </div>
   </Tooltip>

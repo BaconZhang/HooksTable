@@ -15,10 +15,10 @@ const loadData: LoadData<User> = (query) => new Promise(resolve => {
     resolve({
       data: Array.from({ length: query.size || 10 }, (_, index) => ({
         id: index + 1 + "",
-        name: '胡彦斌',
+        name: '吴彦祖',
         age: 32 + index,
         address: '西湖区湖底公园1号',
-        description: "这是一条毫无用处的描述"
+        description: "这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述"
       })),
       page: query.page || 0,
       size: query.size || 10,
@@ -38,14 +38,17 @@ const columns: ColumnProps<User>[] = [
   {
     title: "年龄",
     dataIndex: "age",
+    width: 300,
   },
   {
     title: "住址",
     dataIndex: "address",
+    width: 700,
   },
   {
     title: "描述",
     dataIndex: "description",
+    width: 300,
   },
   {
     title: "操作",

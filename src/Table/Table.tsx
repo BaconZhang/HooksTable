@@ -40,12 +40,12 @@ const computeColumnsWidth = <T extends object>(columns: ColumnProps<T>[]) => {
   const sum = columns.filter(i => !i.fixed).reduce((prev, column) => prev += column.width || 0, 0);
   return columns.map(column => {
     if (column.fixed) {
-      return column.width ? `${column.width}px` : "minmax(max-content, 1fr)"
+      return column.width ? `${column.width}px` : "minmax(auto, 1fr)"
     }
     if (column.width) {
       return `minmax(${column.width}px, ${column.width / sum}fr)`;
     }
-    return "minmax(max-content, 1fr)";
+    return "minmax(auto, 1fr)";
   }).join(' ')
 };
 
@@ -114,13 +114,6 @@ const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: Prop
   };
   const overflow = Object.assign({}, defaultOverflow, props.overflow) as CSSProperties;
   return <div className={`react-hooks-table ${bordered ? "bordered" : ""}`}>
-    <FixedTable
-      show={!!props.overflow}
-      columns={columns}
-      dataSource={dataSource}
-      rowKey={rowKey}
-      triggerReload={triggerReload}
-    />
     <Spin spinning={loading}>
       <div className="table-container" style={overflow}>
         <div className="header" style={styles.header}>
@@ -143,6 +136,66 @@ const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: Prop
                   index={index}
                   showContent={!column.fixed}
                   triggerReload={triggerReload}
+                />)
+              }
+            </div>)
+          }
+        </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
+      </div>
+      <div className="table-container" style={{ position: "absolute", right: 0, top: 0, width: 250, overflow: "hidden", justifyContent: 'flex-end' }}>
+        <div className="header" style={styles.row}>
+          {
+            columns.map(((column) => <ColumnHeader
+              {...column}
+              showContent
+              key={column.key || column.dataIndex as string}
+              style={{ opacity: column.fixed === 'right' ? 1 : 0 }}
+            />))
+          }
+        </div>
+        {dataSource.length ? <div className="body" style={styles.body}>
+          {
+            dataSource.map((record) => <div className="row" style={styles.row} key={`${record[rowKey]}`}>
+              {
+                columns.map((column, index) => <ColumnItem
+                  {...column}
+                  key={column.key || column.dataIndex as string}
+                  record={record}
+                  index={index}
+                  showContent
+                  triggerReload={triggerReload}
+                  style={{ opacity: column.fixed === 'right' ? 1 : 0 }}
+                />)
+              }
+            </div>)
+          }
+        </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
+      </div>
+      <div className="table-container" style={{ position: "absolute", left: 0, top: 0, overflow: "hidden", width: 300 }}>
+        <div className="header" style={styles.row}>
+          {
+            columns.map(((column) => <ColumnHeader
+              {...column}
+              showContent
+              key={column.key || column.dataIndex as string}
+              style={{ opacity: column.fixed === 'left' ? 1 : 0, position: 'relative', zIndex: column.fixed === 'left' ? 0 : -1 }}
+            />))
+          }
+        </div>
+        {dataSource.length ? <div className="body" style={styles.body}>
+          {
+            dataSource.map((record) => <div className="row" style={styles.row} key={`${record[rowKey]}`}>
+              {
+                columns.map((column, index) => <ColumnItem
+                  {...column}
+                  key={column.key || column.dataIndex as string}
+                  record={record}
+                  index={index}
+                  showContent
+                  triggerReload={triggerReload}
+                  style={{
+                    opacity: column.fixed === 'left' ? 1 : 0,
+                  }}
                 />)
               }
             </div>)

@@ -53,6 +53,7 @@
         background-color: @header-background;
         &.auto-fill {
           background-color: transparent;
+          pointer-events: none;
         }
       }
     }
@@ -60,13 +61,14 @@
       display: grid;
       .row {
         display: grid;
-        grid-template-rows: minmax(@min-row-height, auto);
+        // grid-template-rows: minmax(@min-row-height, auto);
         border-bottom: 1px solid @border-color;
         .column-item {
           .base-item;
           background-color: white;
           &.auto-fill {
             background-color: transparent;
+            pointer-events: none;
           }
         }
       }
