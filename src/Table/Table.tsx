@@ -1,7 +1,8 @@
-import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect, useMemo } from 'react';
+import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect } from 'react';
 import { Spin, Pagination } from 'antd';
 import { PaginationProps } from "antd/lib/pagination";
 import { ColumnProps, LoadData, ColumnHeader, ColumnItem } from './Column';
+import FixedTable from './Fixed';
 import "./Table.less";
 
 interface Local {
@@ -15,6 +16,7 @@ interface TableProps<T> {
   local?: Local;
   bordered?: boolean;
   pagination?: PaginationProps;
+  overflow?: Partial<CSSProperties>
 };
 
 const defaultLocal: Local = {
@@ -29,8 +31,22 @@ const defaultPagination: PaginationProps = {
   pageSizeOptions: ["10", "20", "30", "40", "50", "100"]
 };
 
+const defaultOverflow: Partial<CSSProperties> = {
+  overflowX: "hidden",
+  overflowY: "hidden"
+};
+
 const computeColumnsWidth = <T extends object>(columns: ColumnProps<T>[]) => {
-  return columns.map(column => column.width ? column.width : "1fr").join(' ')
+  const sum = columns.filter(i => !i.fixed).reduce((prev, column) => prev += column.width || 0, 0);
+  return columns.map(column => {
+    if (column.fixed) {
+      return column.width ? `${column.width}px` : "minmax(max-content, 1fr)"
+    }
+    if (column.width) {
+      return `minmax(${column.width}px, ${column.width / sum}fr)`;
+    }
+    return "minmax(max-content, 1fr)";
+  }).join(' ')
 };
 
 const computeStyle = <T extends object>(columns: ColumnProps<T>[], rows: number): {
@@ -39,30 +55,29 @@ const computeStyle = <T extends object>(columns: ColumnProps<T>[], rows: number)
   row: CSSProperties
 } => {
   const gridTemplateColumns = computeColumnsWidth(columns);
+  const row = {
+    gridTemplateColumns
+  }
   return {
-    header: {
-      gridTemplateColumns
-    },
+    header: row,
     body: {
       gridTemplateRows: `repeat(${rows}, 1fr)`
     },
-    row: {
-      gridTemplateColumns
-    }
+    row
   }
 };
 
-const useFetchData = <T extends object>(config: { loadData: LoadData<T>, columns: ColumnProps<T>[], pagination: PaginationProps }) => {
-  const { loadData, pagination, columns } = config;
+const useFetchData = <T extends object>(props: TableProps<T>) => {
+  const { loadData, pagination, columns } = props;
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(pagination.current as number);
-  const [size, setSize] = useState(pagination.pageSize as number);
-  const [total, setTotal] = useState(pagination.total as number);
+  const [page, setPage] = useState(pagination ? pagination.current : 1);
+  const [size, setSize] = useState(pagination ? pagination.pageSize : defaultPagination.pageSize);
+  const [total, setTotal] = useState(pagination ? pagination.total : 0);
   const [dataSource, setDataSource] = useState([] as T[]);
-  const [styles, setStyles] = useState(computeStyle(columns, size));
+  const [styles, setStyles] = useState(computeStyle(columns, size as number));
   useEffect(() => {
     setLoading(true);
-    loadData({ page: page - 1, size }).then(res => {
+    loadData({ page: page as number - 1, size }).then(res => {
       setDataSource(res.data);
       setPage(res.page + 1);
       setSize(res.size);
@@ -87,11 +102,7 @@ const useFetchData = <T extends object>(config: { loadData: LoadData<T>, columns
 const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: PropsWithChildren<TableProps<T>>) => {
   const { columns, loadData, rowKey, local, bordered } = props;
   const pagination = Object.assign({}, defaultPagination, props.pagination);
-  const { total, loading, dataSource, setPage, setSize, setLoading, setDataSource, styles, page, size } = useFetchData({
-    pagination,
-    columns,
-    loadData
-  });
+  const { total, loading, dataSource, setPage, setSize, setLoading, setDataSource, styles, page, size } = useFetchData(Object.assign({}, props, { pagination }));
   const triggerReload = () => {
     setLoading(true);
     loadData({ page, size }).then(res => setDataSource(res.data)).finally(() => setLoading(false));
@@ -101,28 +112,43 @@ const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: Prop
     setSize(size);
     setPage(1);
   };
+  const overflow = Object.assign({}, defaultOverflow, props.overflow) as CSSProperties;
   return <div className={`react-hooks-table ${bordered ? "bordered" : ""}`}>
-    <div className="header" style={styles.header}>
-      {
-        columns.map(column => <ColumnHeader {...column} key={column.key || column.dataIndex as string} />)
-      }
-    </div>
+    <FixedTable
+      show={!!props.overflow}
+      columns={columns}
+      dataSource={dataSource}
+      rowKey={rowKey}
+      triggerReload={triggerReload}
+    />
     <Spin spinning={loading}>
-      {dataSource.length ? <div className="body" style={styles.body}>
-        {
-          dataSource.map((record, index) => <div className="row" style={styles.row} key={`${record[rowKey]}`}>
-            {
-              columns.map(column => <ColumnItem
-                {...column}
-                key={column.key || column.dataIndex as string}
-                record={record}
-                index={index}
-                triggerReload={triggerReload}
-              />)
-            }
-          </div>)
-        }
-      </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
+      <div className="table-container" style={overflow}>
+        <div className="header" style={styles.header}>
+          {
+            columns.map(((column) => <ColumnHeader
+              {...column}
+              showContent={!column.fixed}
+              key={column.key || column.dataIndex as string}
+            />))
+          }
+        </div>
+        {dataSource.length ? <div className="body" style={styles.body}>
+          {
+            dataSource.map((record) => <div className="row" style={styles.row} key={`${record[rowKey]}`}>
+              {
+                columns.map((column, index) => <ColumnItem
+                  {...column}
+                  key={column.key || column.dataIndex as string}
+                  record={record}
+                  index={index}
+                  showContent={!column.fixed}
+                  triggerReload={triggerReload}
+                />)
+              }
+            </div>)
+          }
+        </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
+      </div>
     </Spin>
     <div className="footer">
       <div>{loading ? "" : `${total}条`}</div>

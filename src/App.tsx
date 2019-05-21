@@ -7,6 +7,7 @@ interface User {
   name: string;
   age: number;
   address: string;
+  description: string;
 }
 
 const loadData: LoadData<User> = (query) => new Promise(resolve => {
@@ -17,6 +18,7 @@ const loadData: LoadData<User> = (query) => new Promise(resolve => {
         name: '胡彦斌',
         age: 32 + index,
         address: '西湖区湖底公园1号',
+        description: "这是一条毫无用处的描述"
       })),
       page: query.page || 0,
       size: query.size || 10,
@@ -30,22 +32,26 @@ const columns: ColumnProps<User>[] = [
     title: "姓名",
     dataIndex: "name",
     titleRender: (record) => "我是" + record.name,
-    width: "1fr"
+    width: 300,
+    fixed: "left"
   },
   {
     title: "年龄",
     dataIndex: "age",
-    width: "1fr"
   },
   {
     title: "住址",
     dataIndex: "address",
-    width: "2fr"
+  },
+  {
+    title: "描述",
+    dataIndex: "description",
   },
   {
     title: "操作",
     key: "operation",
-    width: "250px",
+    width: 250,
+    fixed: "right",
     render: (record, _, reloadData) => <div>
       <Button type="link" onClick={() => console.log(record)}>编辑</Button>
       <Divider type="vertical" />
@@ -64,6 +70,10 @@ const App: React.FunctionComponent = (): React.ReactElement => {
       rowKey="id"
       bordered
       pagination={{}}
+      overflow={{
+        overflowX: "auto",
+        overflowY: "hidden"
+      }}
     />
   );
 };

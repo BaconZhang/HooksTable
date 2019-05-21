@@ -1,4 +1,4 @@
-import React, { ReactNode, FunctionComponent, PropsWithChildren, ReactElement } from 'react';
+import React, { ReactNode, FunctionComponent, PropsWithChildren, ReactElement, CSSProperties } from 'react';
 import { Tooltip } from 'antd';
 
 export interface PagedQuery {
@@ -25,24 +25,47 @@ export interface ColumnProps<T> {
   key?: string;
   render?: (record: T, index: number, triggerReload: () => void) => ReactElement;
   titleRender?: (record: T, index: number) => ReactNode;
-  width?: string;
+  width?: number;
+  fixed?: "left" | "right";
 }
 
-interface ColumnItemProps<T> extends ColumnProps<T> {
+
+interface ColumnHeader<T> extends ColumnProps<T> {
+  showContent: boolean;
+  style?: CSSProperties;
+}
+
+interface ColumnItemProps<T> extends ColumnHeader<T> {
   record: T;
   index: number;
   triggerReload: () => void;
 }
 
-export const ColumnHeader: FunctionComponent<ColumnProps<any>> = <T extends object>(props: PropsWithChildren<ColumnProps<T>>) => <div className="column-header">
-  {props.title}
-</div>
+export const ColumnHeader: FunctionComponent<ColumnHeader<any>> = <T extends object>(props: PropsWithChildren<ColumnHeader<T>>) => {
+  const { showContent, title, style } = props;
+  return <div className="column-header" style={style || {}}>
+    {showContent ? title : null}
+  </div>
+}
+
+const renderItem = <T extends object>(props: PropsWithChildren<ColumnItemProps<T>>) => {
+  if (!props.showContent) {
+    return null
+  }
+  if (props.render) {
+    return props.render(props.record, props.index, props.triggerReload);
+  }
+  if (props.dataIndex) {
+    return props.record[props.dataIndex]
+  }
+  return null;
+};
 
 export const ColumnItem: FunctionComponent<ColumnItemProps<any>> = <T extends object>(props: PropsWithChildren<ColumnItemProps<T>>) => {
-  const { record, index, dataIndex, render, titleRender, triggerReload } = props;
+  const { record, index, dataIndex, titleRender } = props;
   return <Tooltip title={titleRender ? titleRender(record, index) : dataIndex ? (record[dataIndex] || "") : ""} placement="topLeft">
     <div className="column-item">
-      {render ? render(record, index, triggerReload) : dataIndex ? record[dataIndex] : null}
+      {renderItem(props)}
     </div>
   </Tooltip>
 }

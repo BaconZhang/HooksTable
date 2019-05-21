@@ -1,12 +1,12 @@
 @border-color: #ebedf0;
 @min-row-height: 48px;
 @header-background: #fafafa;
+@zIndex-low: 100;
+@zIndex-high: 1000;
 
 .react-hooks-table {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
   background-color: white;
+  position: relative;
   .base-item {
     display: flex;
     flex: 0 0 auto;
@@ -21,42 +21,71 @@
         border-right: 1px solid @border-color;
       }
     }
-    .header {
-      border: 1px solid @border-color;
-      border-bottom: none;
-      .column-header {
-        .base-item;
-      }
-    }
-    .body {
-      border: 1px solid @border-color;
-      border-bottom: none;
-      .row {
-        .column-item {
+    .table-container, .fixed-table-container {
+      .header {
+        border: 1px solid @border-color;
+        border-bottom: none;
+        .column-header {
           .base-item;
+        }
+      }
+      .body {
+        border: 1px solid @border-color;
+        border-bottom: none;
+        .row {
+          .column-item {
+            .base-item;
+          }
         }
       }
     }
   }
-  .header {
+  .table-container {
     display: grid;
-    grid-template-rows: minmax(@min-row-height, auto);
-    border-bottom: 1px solid @border-color;
-    background-color: @header-background;
-    .column-header {
-      .base-item;
-    }
-  }
-  .body {
-    display: grid;
-    .row {
+    grid-template-columns: 1fr;
+    grid-template-rows: @min-row-height auto;
+    .header {
       display: grid;
       grid-template-rows: minmax(@min-row-height, auto);
       border-bottom: 1px solid @border-color;
-      .column-item {
+      .column-header {
         .base-item;
+        background-color: @header-background;
+        &.auto-fill {
+          background-color: transparent;
+        }
       }
     }
+    .body {
+      display: grid;
+      .row {
+        display: grid;
+        grid-template-rows: minmax(@min-row-height, auto);
+        border-bottom: 1px solid @border-color;
+        .column-item {
+          .base-item;
+          background-color: white;
+          &.auto-fill {
+            background-color: transparent;
+          }
+        }
+      }
+    }
+    .empty-text {
+      display: flex;
+      flex: 0 0 auto;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+    }
+  }
+  .fixed-table-container {
+    .table-container;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    z-index: @zIndex-low;
   }
   .footer {
     display: flex;
@@ -64,12 +93,5 @@
     padding: 16px;
     align-items: center;
     justify-content: space-between;
-  }
-  .empty-text {
-    display: flex;
-    flex: 0 0 auto;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
   }
 }
