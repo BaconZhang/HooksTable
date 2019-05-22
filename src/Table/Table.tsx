@@ -1,4 +1,4 @@
-import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect, ReactElement } from 'react';
+import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect, ReactElement, SyntheticEvent } from 'react';
 import { Spin, Pagination } from 'antd';
 import { PaginationProps } from "antd/lib/pagination";
 import { ColumnProps, LoadData, ColumnHeader, ColumnItem } from './Column';
@@ -16,7 +16,8 @@ interface TableProps<T> {
   local?: Local;
   bordered?: boolean;
   pagination?: PaginationProps;
-  overflow?: Partial<CSSProperties>;
+  tableStyle?: CSSProperties;
+  bodyStyle?: CSSProperties;
   maxRoweHeight?: string;
 };
 
@@ -41,11 +42,6 @@ const defaultPagination: PaginationProps = {
   total: 0,
   showSizeChanger: true,
   pageSizeOptions: ["10", "20", "30", "40", "50", "100"]
-};
-
-const defaultOverflow: Partial<CSSProperties> = {
-  overflowX: "hidden",
-  overflowY: "hidden"
 };
 
 const computeColumnsWidth = <T extends object>(columns: ColumnProps<T>[]) => {
@@ -89,21 +85,29 @@ const useFetchData = <T extends object>(props: TableProps<T>) => {
   }
 };
 
-const MIN_ROW_HEIGHT = 46;
+const MIN_ROW_HEIGHT = 48;
 
 const getRowStyle = <T extends object>(columns: ColumnProps<T>[], maxRowHeight = '1fr') => ({
   gridTemplateColumns: computeColumnsWidth(columns),
   gridTemplateRows: `minmax(${MIN_ROW_HEIGHT}px, ${maxRowHeight})`
-});
+}) as CSSProperties;
 
-const getTableStyle = (type: TableType, overflow?: CSSProperties): CSSProperties => {
+const getBodyStyle = <T extends object>(dataSource: T[], bodyStyle?: CSSProperties) => Object.assign({
+  gridTemplateRows: `repeat(${dataSource.length}, 1fr)`
+}, bodyStyle);
+
+const defaultTableStyle = {
+  overflow: "hidden"
+};
+
+const getTableStyle = (type: TableType, tableStyle?: CSSProperties): CSSProperties => {
   if (type === "center") {
-    return Object.assign({}, defaultOverflow, overflow);
+    return Object.assign({}, defaultTableStyle, tableStyle);
   } else {
-    return Object.assign({}, {
+    return Object.assign({}, defaultTableStyle, tableStyle, {
       position: "absolute",
       top: 0,
-      overflow: 'hidden',
+      overflowX: 'hidden',
       width: '100%',
       border: 'none'
     }, type === 'right' && {
@@ -130,10 +134,23 @@ const getItemstyle = <T extends object>(type: TableType, column: ColumnProps<T>)
 ) as CSSProperties;
 
 const renderTable = <T extends object>(props: RenderTableProps<T>): ReactElement => {
-  const { type, overflow, dataSource, columns, rowKey, triggerReload, loading, local } = props;
+  const { type, dataSource, columns, rowKey, triggerReload, loading, local, bodyStyle } = props;
   const rowStyle = getRowStyle(columns, props.maxRoweHeight);
-  const tableStyle = getTableStyle(type, overflow);
-  return <div className="table-container" style={tableStyle}>
+  const tableStyle = getTableStyle(type, props.tableStyle);
+  const onScroll = (e: SyntheticEvent) => {
+    if (e.target !== e.currentTarget) {
+      return
+    }
+    const scrollTop = e.target["scrollTop"];
+    if (scrollTop !== undefined) {
+      document.querySelectorAll(".react-hooks-table .table-container").forEach((elm) => {
+        if (e.target !== elm) {
+          elm.scrollTop = scrollTop
+        }
+      });
+    }
+  }
+  return <div className="table-container" style={tableStyle} onScroll={onScroll}>
     <div className="header" style={rowStyle}>
       {
         columns.map(((column) => <ColumnHeader
@@ -143,7 +160,10 @@ const renderTable = <T extends object>(props: RenderTableProps<T>): ReactElement
         />))
       }
     </div>
-    {Array.isArray(dataSource) && dataSource.length ? <div className="body" style={{ gridTemplateRows: `repeat(${dataSource.length}, 1fr)` }}>
+    {Array.isArray(dataSource) && dataSource.length ? <div
+      className="body"
+      style={getBodyStyle(dataSource || [], bodyStyle)}
+    >
       {
         dataSource.map((record) => <div className="row" style={rowStyle} key={`${record[rowKey]}`}>
           {
@@ -182,7 +202,6 @@ const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: Prop
     local,
     triggerReload
   });
-
   return <div className={`react-hooks-table ${bordered ? "bordered" : ""}`}>
     <Spin spinning={loading}>
       {renderTable(getRenderProps(TableType.center))}

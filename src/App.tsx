@@ -38,8 +38,7 @@ const columns: ColumnProps<User>[] = [
   {
     title: "年龄",
     dataIndex: "age",
-    width: 200,
-    fixed: "left"
+    width: 200
   },
   {
     title: "住址",
@@ -73,9 +72,9 @@ const App: React.FunctionComponent = (): React.ReactElement => {
       loadData={loadData}
       rowKey="id"
       pagination={{}}
-      overflow={{
+      tableStyle={{
         overflowX: "auto",
-        overflowY: "hidden"
+        //overflowY: "hidden"
       }}
     // maxRoweHeight="60px"
     />
