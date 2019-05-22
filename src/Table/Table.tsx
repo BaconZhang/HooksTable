@@ -1,4 +1,4 @@
-import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect, useLayoutEffect, ReactElement } from 'react';
+import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect, ReactElement } from 'react';
 import { Spin, Pagination } from 'antd';
 import { PaginationProps } from "antd/lib/pagination";
 import { ColumnProps, LoadData, ColumnHeader, ColumnItem } from './Column';
@@ -16,7 +16,8 @@ interface TableProps<T> {
   local?: Local;
   bordered?: boolean;
   pagination?: PaginationProps;
-  overflow?: Partial<CSSProperties>
+  overflow?: Partial<CSSProperties>;
+  maxRoweHeight?: string;
 };
 
 enum TableType {
@@ -53,7 +54,7 @@ const computeColumnsWidth = <T extends object>(columns: ColumnProps<T>[]) => {
     if (column.width) {
       return `minmax(${column.width}px, ${column.width / sum}fr)`;
     }
-    return "minmax(auto, 1fr)";
+    return "minmax(max-content, auto)";
   }).join(' ')
 };
 
@@ -88,8 +89,11 @@ const useFetchData = <T extends object>(props: TableProps<T>) => {
   }
 };
 
-const getRowStyle = <T extends object>(columns: ColumnProps<T>[]) => ({
-  gridTemplateColumns: computeColumnsWidth(columns)
+const MIN_ROW_HEIGHT = 46;
+
+const getRowStyle = <T extends object>(columns: ColumnProps<T>[], maxRowHeight = '1fr') => ({
+  gridTemplateColumns: computeColumnsWidth(columns),
+  gridTemplateRows: `minmax(${MIN_ROW_HEIGHT}px, ${maxRowHeight})`
 });
 
 const getTableStyle = (type: TableType, overflow?: CSSProperties): CSSProperties => {
@@ -127,7 +131,7 @@ const getItemstyle = <T extends object>(type: TableType, column: ColumnProps<T>)
 
 const renderTable = <T extends object>(props: RenderTableProps<T>): ReactElement => {
   const { type, overflow, dataSource, columns, rowKey, triggerReload, loading, local } = props;
-  const rowStyle = getRowStyle(columns);
+  const rowStyle = getRowStyle(columns, props.maxRoweHeight);
   const tableStyle = getTableStyle(type, overflow);
   return <div className="table-container" style={tableStyle}>
     <div className="header" style={rowStyle}>

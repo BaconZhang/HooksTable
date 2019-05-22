@@ -39,6 +39,7 @@ const columns: ColumnProps<User>[] = [
     title: "年龄",
     dataIndex: "age",
     width: 200,
+    fixed: "left"
   },
   {
     title: "住址",
@@ -76,6 +77,7 @@ const App: React.FunctionComponent = (): React.ReactElement => {
         overflowX: "auto",
         overflowY: "hidden"
       }}
+    // maxRoweHeight="60px"
     />
   );
 };
