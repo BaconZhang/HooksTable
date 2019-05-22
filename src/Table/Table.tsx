@@ -2,8 +2,10 @@ import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, u
 import { Spin, Pagination } from 'antd';
 import { PaginationProps } from "antd/lib/pagination";
 import { ColumnProps, LoadData, ColumnHeader, ColumnItem } from './Column';
+import { getScrollbarWidth } from './util';
 import "./Table.less";
 
+const SCROLL_BAR_WIDTH = getScrollbarWidth();
 interface Local {
   emptyText: string;
 };
@@ -104,17 +106,22 @@ const getTableStyle = (type: TableType, tableStyle?: CSSProperties): CSSProperti
   if (type === "center") {
     return Object.assign({}, defaultTableStyle, tableStyle);
   } else {
-    return Object.assign({}, defaultTableStyle, tableStyle, {
+    const style = Object.assign({}, tableStyle);
+    Reflect.deleteProperty(style, "overflow");
+    Reflect.deleteProperty(style, "overflowX");
+    Reflect.deleteProperty(style, "overflowY");
+    return Object.assign({}, defaultTableStyle, style, {
       position: "absolute",
       top: 0,
-      overflowX: 'hidden',
-      width: '100%',
+      width: "100%",
+      height: parseFloat(`${style.height}`) - SCROLL_BAR_WIDTH,
       border: 'none'
     }, type === 'right' && {
-      right: 0,
+      right: SCROLL_BAR_WIDTH,
       justifyContent: 'flex-end'
     }, type === 'left' && {
-      left: 0
+      left: 0,
+      width: `calc(100% - ${SCROLL_BAR_WIDTH}px)`,
     }) as CSSProperties;
   };
 };
@@ -145,12 +152,28 @@ const renderTable = <T extends object>(props: RenderTableProps<T>): ReactElement
     if (scrollTop !== undefined) {
       document.querySelectorAll(".react-hooks-table .table-container").forEach((elm) => {
         if (e.target !== elm) {
-          elm.scrollTop = scrollTop
+          elm.scrollTop = scrollTop;
         }
       });
     }
   }
-  return <div className="table-container" style={tableStyle} onScroll={onScroll}>
+  const onWheel = (e: SyntheticEvent) => {
+    const deltaY = e["deltaY"];
+    if (deltaY !== undefined) {
+      const center = document.querySelector(".react-hooks-table .table-container.center");
+      const left = document.querySelector(".react-hooks-table .table-container.left");
+      const right = document.querySelector(".react-hooks-table .table-container.right");
+      if (center && center.clientHeight + center.scrollTop === center.scrollHeight && deltaY > 0) {
+        return
+      }
+      [center, left, right].forEach(elm => {
+        if (elm && e.target !== elm) {
+          elm.scrollTop = elm.scrollTop + deltaY;
+        }
+      })
+    }
+  }
+  return <div className={`table-container ${type}`} style={tableStyle} onScroll={onScroll} onWheel={onWheel}>
     <div className="header" style={rowStyle}>
       {
         columns.map(((column) => <ColumnHeader

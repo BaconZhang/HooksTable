@@ -74,7 +74,8 @@ const App: React.FunctionComponent = (): React.ReactElement => {
       pagination={{}}
       tableStyle={{
         overflowX: "auto",
-        //overflowY: "hidden"
+        overflowY: "auto",
+        height: 400
       }}
     // maxRoweHeight="60px"
     />
