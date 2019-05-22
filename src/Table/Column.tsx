@@ -31,7 +31,6 @@ export interface ColumnProps<T> {
 
 
 interface ColumnHeader<T> extends ColumnProps<T> {
-  showContent: boolean;
   style?: CSSProperties;
 }
 
@@ -42,16 +41,13 @@ interface ColumnItemProps<T> extends ColumnHeader<T> {
 }
 
 export const ColumnHeader: FunctionComponent<ColumnHeader<any>> = <T extends object>(props: PropsWithChildren<ColumnHeader<T>>) => {
-  const { showContent, title, style } = props;
+  const { title, style } = props;
   return <div className="column-header" style={style || {}}>
-    {showContent ? title : null}
+    {title}
   </div>
 }
 
 const renderItem = <T extends object>(props: PropsWithChildren<ColumnItemProps<T>>) => {
-  if (!props.showContent) {
-    return null
-  }
   if (props.render) {
     return props.render(props.record, props.index, props.triggerReload);
   }

@@ -21,22 +21,21 @@
         border-right: 1px solid @border-color;
       }
     }
-    .table-container, .fixed-table-container {
+    .table-container {
       .header {
-        border: 1px solid @border-color;
-        border-bottom: none;
         .column-header {
           .base-item;
         }
       }
       .body {
-        border: 1px solid @border-color;
-        border-bottom: none;
         .row {
           .column-item {
             .base-item;
           }
         }
+      }
+      .empty-text {
+        border: 1px solid @border-color;
       }
     }
   }
@@ -47,14 +46,10 @@
     .header {
       display: grid;
       grid-template-rows: minmax(@min-row-height, auto);
-      border-bottom: 1px solid @border-color;
       .column-header {
         .base-item;
         background-color: @header-background;
-        &.auto-fill {
-          background-color: transparent;
-          pointer-events: none;
-        }
+        border-bottom: 1px solid @border-color;
       }
     }
     .body {
@@ -81,19 +76,14 @@
       height: 200px;
     }
   }
-  .fixed-table-container {
-    .table-container;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    z-index: @zIndex-low;
-  }
   .footer {
     display: flex;
     flex: 0 0 auto;
     padding: 16px;
     align-items: center;
     justify-content: space-between;
+  }
+  .ant-spin-nested-loading > div > .ant-spin {
+    max-height: 100%;
   }
 }

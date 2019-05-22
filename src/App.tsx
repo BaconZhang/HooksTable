@@ -18,13 +18,13 @@ const loadData: LoadData<User> = (query) => new Promise(resolve => {
         name: '吴彦祖',
         age: 32 + index,
         address: '西湖区湖底公园1号',
-        description: "这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述这是一条毫无用处的描述"
+        description: "这是一条毫无用处的描述".repeat(index === 1 ? 4 : 1)
       })),
       page: query.page || 0,
       size: query.size || 10,
       total: 100
     });
-  }, 2000);
+  }, 1000);
 });
 
 const columns: ColumnProps<User>[] = [
@@ -32,18 +32,18 @@ const columns: ColumnProps<User>[] = [
     title: "姓名",
     dataIndex: "name",
     titleRender: (record) => "我是" + record.name,
-    width: 300,
+    width: 200,
     fixed: "left"
   },
   {
     title: "年龄",
     dataIndex: "age",
-    width: 300,
+    width: 200,
   },
   {
     title: "住址",
     dataIndex: "address",
-    width: 700,
+    width: 300,
   },
   {
     title: "描述",
@@ -71,7 +71,6 @@ const App: React.FunctionComponent = (): React.ReactElement => {
       columns={columns}
       loadData={loadData}
       rowKey="id"
-      bordered
       pagination={{}}
       overflow={{
         overflowX: "auto",

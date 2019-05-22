@@ -1,8 +1,7 @@
-import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect } from 'react';
+import React, { FunctionComponent, PropsWithChildren, CSSProperties, useState, useEffect, useLayoutEffect, ReactElement } from 'react';
 import { Spin, Pagination } from 'antd';
 import { PaginationProps } from "antd/lib/pagination";
 import { ColumnProps, LoadData, ColumnHeader, ColumnItem } from './Column';
-import FixedTable from './Fixed';
 import "./Table.less";
 
 interface Local {
@@ -10,6 +9,7 @@ interface Local {
 };
 
 interface TableProps<T> {
+  dataSource?: T[];
   columns: ColumnProps<T>[];
   loadData: LoadData<T>;
   rowKey: keyof T;
@@ -18,6 +18,17 @@ interface TableProps<T> {
   pagination?: PaginationProps;
   overflow?: Partial<CSSProperties>
 };
+
+enum TableType {
+  left = "left",
+  center = "center",
+  right = "right"
+}
+interface RenderTableProps<T> extends TableProps<T> {
+  type: TableType;
+  triggerReload: () => void;
+  loading: boolean;
+}
 
 const defaultLocal: Local = {
   emptyText: "暂无数据"
@@ -37,11 +48,8 @@ const defaultOverflow: Partial<CSSProperties> = {
 };
 
 const computeColumnsWidth = <T extends object>(columns: ColumnProps<T>[]) => {
-  const sum = columns.filter(i => !i.fixed).reduce((prev, column) => prev += column.width || 0, 0);
+  const sum = columns.reduce((prev, column) => prev += column.width || 0, 0);
   return columns.map(column => {
-    if (column.fixed) {
-      return column.width ? `${column.width}px` : "minmax(auto, 1fr)"
-    }
     if (column.width) {
       return `minmax(${column.width}px, ${column.width / sum}fr)`;
     }
@@ -49,32 +57,14 @@ const computeColumnsWidth = <T extends object>(columns: ColumnProps<T>[]) => {
   }).join(' ')
 };
 
-const computeStyle = <T extends object>(columns: ColumnProps<T>[], rows: number): {
-  header: CSSProperties,
-  body: CSSProperties,
-  row: CSSProperties
-} => {
-  const gridTemplateColumns = computeColumnsWidth(columns);
-  const row = {
-    gridTemplateColumns
-  }
-  return {
-    header: row,
-    body: {
-      gridTemplateRows: `repeat(${rows}, 1fr)`
-    },
-    row
-  }
-};
-
 const useFetchData = <T extends object>(props: TableProps<T>) => {
-  const { loadData, pagination, columns } = props;
+  const { loadData } = props;
+  const pagination = Object.assign({}, defaultPagination, props.pagination);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(pagination ? pagination.current : 1);
-  const [size, setSize] = useState(pagination ? pagination.pageSize : defaultPagination.pageSize);
-  const [total, setTotal] = useState(pagination ? pagination.total : 0);
-  const [dataSource, setDataSource] = useState([] as T[]);
-  const [styles, setStyles] = useState(computeStyle(columns, size as number));
+  const [page, setPage] = useState(pagination.current);
+  const [size, setSize] = useState(pagination.pageSize);
+  const [total, setTotal] = useState(pagination.total);
+  const [dataSource, setDataSource] = useState(props.dataSource || []);
   useEffect(() => {
     setLoading(true);
     loadData({ page: page as number - 1, size }).then(res => {
@@ -82,27 +72,95 @@ const useFetchData = <T extends object>(props: TableProps<T>) => {
       setPage(res.page + 1);
       setSize(res.size);
       setTotal(res.total);
-      setStyles(computeStyle(columns, res.size));
     }).finally(() => setLoading(false));
   }, [page, size]);
   return {
     loading,
     total,
     dataSource,
-    styles,
     page,
     size,
     setPage,
     setSize,
     setLoading,
-    setDataSource
+    setDataSource,
+    pagination
   }
 };
 
+const getRowStyle = <T extends object>(columns: ColumnProps<T>[]) => ({
+  gridTemplateColumns: computeColumnsWidth(columns)
+});
+
+const getTableStyle = (type: TableType, overflow?: CSSProperties): CSSProperties => {
+  if (type === "center") {
+    return Object.assign({}, defaultOverflow, overflow);
+  } else {
+    return Object.assign({}, {
+      position: "absolute",
+      top: 0,
+      overflow: 'hidden',
+      width: '100%',
+      border: 'none'
+    }, type === 'right' && {
+      right: 0,
+      justifyContent: 'flex-end'
+    }, type === 'left' && {
+      left: 0
+    }) as CSSProperties;
+  };
+};
+
+const getItemstyle = <T extends object>(type: TableType, column: ColumnProps<T>): CSSProperties => Object.assign(
+  {
+    position: 'relative'
+  },
+  type === TableType.center && {
+    zIndex: !column.fixed ? 1 : -1,
+    visibility: !column.fixed ? 'visible' : 'hidden'
+  },
+  type !== TableType.center && {
+    zIndex: column.fixed === type ? 1 : -1,
+    visibility: column.fixed === type ? "visible" : "hidden",
+  }
+) as CSSProperties;
+
+const renderTable = <T extends object>(props: RenderTableProps<T>): ReactElement => {
+  const { type, overflow, dataSource, columns, rowKey, triggerReload, loading, local } = props;
+  const rowStyle = getRowStyle(columns);
+  const tableStyle = getTableStyle(type, overflow);
+  return <div className="table-container" style={tableStyle}>
+    <div className="header" style={rowStyle}>
+      {
+        columns.map(((column) => <ColumnHeader
+          {...column}
+          key={column.key || column.dataIndex as string}
+          style={getItemstyle(type, column)}
+        />))
+      }
+    </div>
+    {Array.isArray(dataSource) && dataSource.length ? <div className="body" style={{ gridTemplateRows: `repeat(${dataSource.length}, 1fr)` }}>
+      {
+        dataSource.map((record) => <div className="row" style={rowStyle} key={`${record[rowKey]}`}>
+          {
+            columns.map((column, index) => <ColumnItem
+              {...column}
+              key={column.key || column.dataIndex as string}
+              record={record}
+              index={index}
+              triggerReload={triggerReload}
+              style={getItemstyle(type, column)}
+            />)
+          }
+        </div>)
+      }
+    </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
+  </div>
+};
+
 const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: PropsWithChildren<TableProps<T>>) => {
-  const { columns, loadData, rowKey, local, bordered } = props;
-  const pagination = Object.assign({}, defaultPagination, props.pagination);
-  const { total, loading, dataSource, setPage, setSize, setLoading, setDataSource, styles, page, size } = useFetchData(Object.assign({}, props, { pagination }));
+  const { columns, loadData, local, bordered } = props;
+  const { total, loading, dataSource, setPage, setSize, setLoading, setDataSource, page, size, pagination } = useFetchData(props);
   const triggerReload = () => {
     setLoading(true);
     loadData({ page, size }).then(res => setDataSource(res.data)).finally(() => setLoading(false));
@@ -112,96 +170,20 @@ const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: Prop
     setSize(size);
     setPage(1);
   };
-  const overflow = Object.assign({}, defaultOverflow, props.overflow) as CSSProperties;
+  const getRenderProps = (type: TableType): PropsWithChildren<RenderTableProps<T>> => ({
+    ...props,
+    type,
+    dataSource,
+    loading,
+    local,
+    triggerReload
+  });
+
   return <div className={`react-hooks-table ${bordered ? "bordered" : ""}`}>
     <Spin spinning={loading}>
-      <div className="table-container" style={overflow}>
-        <div className="header" style={styles.header}>
-          {
-            columns.map(((column) => <ColumnHeader
-              {...column}
-              showContent={!column.fixed}
-              key={column.key || column.dataIndex as string}
-            />))
-          }
-        </div>
-        {dataSource.length ? <div className="body" style={styles.body}>
-          {
-            dataSource.map((record) => <div className="row" style={styles.row} key={`${record[rowKey]}`}>
-              {
-                columns.map((column, index) => <ColumnItem
-                  {...column}
-                  key={column.key || column.dataIndex as string}
-                  record={record}
-                  index={index}
-                  showContent={!column.fixed}
-                  triggerReload={triggerReload}
-                />)
-              }
-            </div>)
-          }
-        </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
-      </div>
-      <div className="table-container" style={{ position: "absolute", right: 0, top: 0, width: 250, overflow: "hidden", justifyContent: 'flex-end' }}>
-        <div className="header" style={styles.row}>
-          {
-            columns.map(((column) => <ColumnHeader
-              {...column}
-              showContent
-              key={column.key || column.dataIndex as string}
-              style={{ opacity: column.fixed === 'right' ? 1 : 0 }}
-            />))
-          }
-        </div>
-        {dataSource.length ? <div className="body" style={styles.body}>
-          {
-            dataSource.map((record) => <div className="row" style={styles.row} key={`${record[rowKey]}`}>
-              {
-                columns.map((column, index) => <ColumnItem
-                  {...column}
-                  key={column.key || column.dataIndex as string}
-                  record={record}
-                  index={index}
-                  showContent
-                  triggerReload={triggerReload}
-                  style={{ opacity: column.fixed === 'right' ? 1 : 0 }}
-                />)
-              }
-            </div>)
-          }
-        </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
-      </div>
-      <div className="table-container" style={{ position: "absolute", left: 0, top: 0, overflow: "hidden", width: 300 }}>
-        <div className="header" style={styles.row}>
-          {
-            columns.map(((column) => <ColumnHeader
-              {...column}
-              showContent
-              key={column.key || column.dataIndex as string}
-              style={{ opacity: column.fixed === 'left' ? 1 : 0, position: 'relative', zIndex: column.fixed === 'left' ? 0 : -1 }}
-            />))
-          }
-        </div>
-        {dataSource.length ? <div className="body" style={styles.body}>
-          {
-            dataSource.map((record) => <div className="row" style={styles.row} key={`${record[rowKey]}`}>
-              {
-                columns.map((column, index) => <ColumnItem
-                  {...column}
-                  key={column.key || column.dataIndex as string}
-                  record={record}
-                  index={index}
-                  showContent
-                  triggerReload={triggerReload}
-                  style={{
-                    opacity: column.fixed === 'left' ? 1 : 0,
-                  }}
-                />)
-              }
-            </div>)
-          }
-        </div> : <div className="empty-text">{loading ? "" : (local || defaultLocal).emptyText}</div>}
-      </div>
+      {renderTable(getRenderProps(TableType.center))}
+      {columns.some(column => column.fixed === 'left') && renderTable(getRenderProps(TableType.left))}
+      {columns.some(column => column.fixed === 'right') && renderTable(getRenderProps(TableType.right))}
     </Spin>
     <div className="footer">
       <div>{loading ? "" : `${total}条`}</div>
@@ -218,4 +200,4 @@ const Table: FunctionComponent<TableProps<any>> = <T extends object>(props: Prop
   </div>
 }
 
-export default Table
+export default Table;
