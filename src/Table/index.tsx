@@ -1,4 +1,4 @@
-import Table from './Table';
+import TableContainer from './Container';
 export * from './Column';
 
-export default Table;
+export default TableContainer;
