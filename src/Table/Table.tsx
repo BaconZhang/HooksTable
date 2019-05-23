@@ -1,9 +1,27 @@
 import React, { FunctionComponent, CSSProperties, ReactElement, SyntheticEvent } from 'react';
 import { PaginationProps } from "antd/lib/pagination";
-import { ColumnProps, LoadData, ColumnHeader, ColumnItem } from './Column';
+import { ColumnProps, ColumnHeader, ColumnItem } from './Column';
 import { getScrollbarWidth } from './util';
 
 const SCROLL_BAR_WIDTH = getScrollbarWidth();
+
+export interface PagedQuery {
+  page?: number;
+  size?: number;
+  sort?: string;
+  filter?: string;
+};
+
+export interface PagedResponse<T> {
+  data: T[];
+  page: number;
+  size: number;
+  total: number;
+};
+
+export interface LoadData<T> {
+  (query: PagedQuery): Promise<PagedResponse<T>>
+};
 
 interface Local {
   emptyText: string;
@@ -21,6 +39,10 @@ enum ZIndex {
   high = 1
 }
 
+interface Scroll {
+  x?: boolean;
+  y?: number;
+}
 export interface TableProps<T> {
   dataSource?: T[];
   columns: ColumnProps<T>[];
@@ -33,6 +55,7 @@ export interface TableProps<T> {
   tableStyle?: CSSProperties;
   bodyStyle?: CSSProperties;
   rowStyle?: CSSProperties;
+  scroll?: Scroll;
 };
 
 export enum FixedType {
@@ -78,31 +101,38 @@ const defaultFixedTabelStyle = {
 };
 
 const TableStyles: {
-  [key in FixedType]: (tableStyle?: CSSProperties) => CSSProperties
+  [key in FixedType]: (tableStyle?: CSSProperties, scroll?: Scroll) => CSSProperties
 } = {
-  [FixedType.center]: (tableStyle) => Object.assign({}, defaultTableStyle, tableStyle),
-  [FixedType.left]: (tableStyle) => Object.assign({}, defaultFixedTabelStyle, tableStyle, {
+  [FixedType.center]: (tableStyle, scroll) => Object.assign(
+    {},
+    defaultTableStyle,
+    tableStyle,
+    scroll ? {
+      overflowX: scroll.x ? "auto" : 'hidden',
+      overflowY: scroll.y ? "auto" : 'hidden',
+      height: scroll.y ? scroll.y : "auto"
+    } : {}
+  ),
+  [FixedType.left]: (tableStyle, scroll) => Object.assign({}, defaultFixedTabelStyle, tableStyle, {
     left: 0,
-    width: `calc(100% - ${SCROLL_BAR_WIDTH}px)`
+    width: scroll && scroll.x ? `calc(100% - ${SCROLL_BAR_WIDTH}px)` : "100%"
   }),
-  [FixedType.right]: (tableStyle) => Object.assign({}, defaultFixedTabelStyle, tableStyle, {
-    right: SCROLL_BAR_WIDTH,
+  [FixedType.right]: (tableStyle, scroll) => Object.assign({}, defaultFixedTabelStyle, tableStyle, {
+    right: scroll && scroll.y ? SCROLL_BAR_WIDTH : 0,
     justifyContent: 'flex-end'
   }),
 };
 
-const getTableStyle = (type: FixedType, tableStyle?: CSSProperties): CSSProperties => {
+const getTableStyle = (type: FixedType, tableStyle?: CSSProperties, scroll?: Scroll): CSSProperties => {
   if (type === "center") {
-    return TableStyles[type](tableStyle);
+    return TableStyles[type](tableStyle, scroll);
   } else {
     const style = Object.assign({}, tableStyle);
     ["overflow", "overflowX", "overflowY"].forEach(key => Reflect.deleteProperty(style, key));
-    ["height", "minHeight", "maxHeight"].forEach(key => {
-      if (Reflect.has(style, key)) {
-        Reflect.set(style, key, parseFloat(`${style[key]}`) - SCROLL_BAR_WIDTH)
-      }
-    });
-    return TableStyles[type](style);
+    if (scroll && scroll.y !== undefined) {
+      Reflect.set(style, "height", scroll.y - SCROLL_BAR_WIDTH)
+    }
+    return TableStyles[type](style, scroll);
   };
 };
 
@@ -130,7 +160,7 @@ const getItemstyle = <T extends object>(type: FixedType, column: ColumnProps<T>)
 const Table: FunctionComponent<RenderTableProps<any>> = <T extends object>(props: RenderTableProps<T>): ReactElement => {
   const { type, dataSource, columns, rowKey, triggerReload, loading, local, bodyStyle } = props;
   const rowStyle = getRowStyle(columns, props.rowStyle);
-  const tableStyle = getTableStyle(type, props.tableStyle);
+  const tableStyle = getTableStyle(type, props.tableStyle, props.scroll);
   const onScroll = (e: SyntheticEvent) => {
     if (e.target !== e.currentTarget) {
       return

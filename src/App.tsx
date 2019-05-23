@@ -72,12 +72,10 @@ const App: React.FunctionComponent = (): React.ReactElement => {
       loadData={loadData}
       rowKey="id"
       pagination={{}}
-      tableStyle={{
-        overflowX: "auto",
-        overflowY: "auto",
-        height: 400
+      scroll={{
+        x: true,
+        y: 600
       }}
-    // maxRoweHeight="60px"
     />
   );
 };

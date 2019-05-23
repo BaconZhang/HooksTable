@@ -1,8 +1,53 @@
-import React, { FunctionComponent, PropsWithChildren, useState, useEffect } from 'react';
+import React, { FunctionComponent, PropsWithChildren, Reducer, useEffect, useReducer } from 'react';
 import { Spin, Pagination } from 'antd';
 import { PaginationProps } from "antd/lib/pagination";
-import Table, { TableProps, FixedType, RenderTableProps } from './Table';
+import Table, { TableProps, FixedType, RenderTableProps, LoadData } from './Table';
 import "./Table.less";
+
+enum ActionTypes {
+  filter = "filter",
+  loading = "loading",
+  dataSource = "dataSource"
+};
+
+interface Filter {
+  page: number;
+  size: number;
+};
+
+interface Store<T> {
+  filter: Filter;
+  loading: boolean;
+  dataSource: T[];
+  total: number;
+}
+
+interface Action<T> {
+  type: ActionTypes;
+  payload: {
+    filter?: Partial<Filter>;
+    loading?: boolean;
+    dataSource?: T[];
+    total?: number;
+  }
+}
+
+const reducer = <T extends object>(state: Store<T>, action: Action<T>) => {
+  switch (action.type) {
+    case ActionTypes.filter:
+      const filter = Object.assign({}, state.filter, action.payload.filter);
+      return Object.assign({}, state, { filter });
+    case ActionTypes.loading:
+      return Object.assign({}, state, { loading: action.payload.loading });
+    case ActionTypes.dataSource:
+      return Object.assign({}, state, {
+        dataSource: action.payload.dataSource,
+        total: action.payload.total
+      });
+    default:
+      return state;
+  }
+}
 
 const defaultPagination: PaginationProps = {
   current: 1,
@@ -12,73 +57,113 @@ const defaultPagination: PaginationProps = {
   pageSizeOptions: ["10", "20", "30", "40", "50", "100"]
 };
 
-const useFetchData = <T extends object>(props: TableProps<T>) => {
-  const { loadData } = props;
-  const pagination = Object.assign({}, defaultPagination, props.pagination);
-  const [loading, setLoading] = useState(props.loading ? props.loading : true);
-  const [page, setPage] = useState(pagination.current);
-  const [size, setSize] = useState(pagination.pageSize);
-  const [total, setTotal] = useState(pagination.total);
-  const [dataSource, setDataSource] = useState(props.dataSource || []);
+const useFetchData = <T extends object>(
+  loadData: LoadData<T>,
+  store: Store<T>,
+  dispatch: React.Dispatch<Action<T>>,
+) => {
   useEffect(() => {
-    setLoading(true);
-    loadData({ page: page as number - 1, size }).then(res => {
-      setDataSource(res.data);
-      setPage(res.page + 1);
-      setSize(res.size);
-      setTotal(res.total);
-    }).finally(() => setLoading(false));
-  }, [page, size]);
-  return {
-    loading,
-    total,
-    dataSource,
-    page,
-    size,
-    setPage,
-    setSize,
-    setLoading,
-    setDataSource,
-    pagination
-  }
+    dispatch({
+      type: ActionTypes.loading,
+      payload: {
+        loading: true
+      }
+    });
+    loadData({
+      page: store.filter.page - 1,
+      size: store.filter.size
+    }).then(res => {
+      dispatch({
+        type: ActionTypes.dataSource,
+        payload: {
+          dataSource: res.data,
+          total: res.total
+        }
+      });
+      dispatch({
+        type: ActionTypes.filter,
+        payload: {
+          filter: {
+            page: res.page + 1,
+            size: res.size
+          }
+        }
+      });
+    }).finally(() => dispatch({
+      type: ActionTypes.loading,
+      payload: {
+        loading: false
+      }
+    }));
+  }, [store.filter.page, store.filter.size]);
 };
 
 const TableContainer: FunctionComponent<TableProps<any>> = <T extends object>(props: PropsWithChildren<TableProps<T>>) => {
   const { columns, loadData, local, bordered } = props;
-  const { total, loading, dataSource, setPage, setSize, setLoading, setDataSource, page, size, pagination } = useFetchData(props);
+  const pagination = Object.assign({}, defaultPagination, props.pagination);
+  const initialState: Store<T> = {
+    filter: {
+      page: pagination.current as number,
+      size: pagination.pageSize as number
+    },
+    loading: true,
+    dataSource: [],
+    total: pagination.total as number
+  };
+  const [store, dispatch] = useReducer<Reducer<Store<T>, Action<T>>>(reducer, initialState);
+  useFetchData(loadData, store, dispatch);
+  const setLoading = (loading: boolean) => dispatch({
+    type: ActionTypes.loading,
+    payload: { loading }
+  });
   const triggerReload = () => {
     setLoading(true);
-    loadData({ page, size }).then(res => setDataSource(res.data)).finally(() => setLoading(false));
+    loadData(store.filter).then(res => dispatch({
+      type: ActionTypes.dataSource,
+      payload: {
+        dataSource: res.data
+      }
+    })).finally(() => setLoading(false));
   };
-  const onPageChange = (page: number) => setPage(page);
-  const onSizeChange = (_: number, size: number) => {
-    setSize(size);
-    setPage(1);
-  };
+  const setPage = (page: number) => dispatch({
+    type: ActionTypes.filter,
+    payload: {
+      filter: { page }
+    }
+  });
+  const setPageSize = (_: number, size: number) => dispatch({
+    type: ActionTypes.filter,
+    payload: {
+      filter: {
+        page: 1,
+        size
+      }
+    }
+  });
   const getRenderProps = (type: FixedType): PropsWithChildren<RenderTableProps<T>> => ({
     ...props,
     type,
-    dataSource,
-    loading,
+    dataSource: store.dataSource,
+    loading: store.loading,
     local,
     triggerReload
   });
   return <div className={`react-hooks-table ${bordered ? "bordered" : ""}`}>
-    <Spin spinning={loading}>
+    <Spin spinning={store.loading}>
       {<Table {...getRenderProps(FixedType.center)} />}
       {columns.some(column => column.fixed === FixedType.left) && <Table {...getRenderProps(FixedType.left)} />}
       {columns.some(column => column.fixed === FixedType.right) && <Table {...getRenderProps(FixedType.right)} />}
     </Spin>
     <div className="footer">
-      <div>{loading ? "" : `${total}条`}</div>
+      <div>{store.loading ? "" : `${store.total}条`}</div>
       {!!props.pagination && <Pagination
         {...pagination}
-        disabled={loading}
-        pageSize={size}
-        current={page}
-        total={total}
-        onChange={onPageChange}
-        onShowSizeChange={onSizeChange}
+        disabled={store.loading}
+        pageSize={store.filter.size}
+        current={store.filter.page}
+        total={store.total}
+        onChange={setPage}
+        onShowSizeChange={setPageSize}
       />}
     </div>
   </div>

@@ -1,24 +1,6 @@
 import React, { ReactNode, FunctionComponent, PropsWithChildren, ReactElement, CSSProperties } from 'react';
 import { Tooltip } from 'antd';
 
-export interface PagedQuery {
-  page?: number;
-  size?: number;
-  sort?: string;
-  filter?: string;
-};
-
-export interface PagedResponse<T> {
-  data: T[];
-  page: number;
-  size: number;
-  total: number;
-};
-
-export interface LoadData<T> {
-  (query: PagedQuery): Promise<PagedResponse<T>>
-};
-
 export interface ColumnProps<T> {
   title: string | ReactNode;
   dataIndex?: keyof T;
