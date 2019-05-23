@@ -1,4 +1,4 @@
-import React, { ReactNode, FunctionComponent, PropsWithChildren, ReactElement, CSSProperties } from 'react';
+import React, { ReactNode, FunctionComponent, PropsWithChildren, ReactElement, CSSProperties, Fragment } from 'react';
 import { Tooltip } from 'antd';
 
 export interface ColumnProps<T> {
@@ -9,6 +9,7 @@ export interface ColumnProps<T> {
   titleRender?: (record: T, index: number) => ReactNode;
   width?: number;
   fixed?: "left" | "right";
+  children?: ColumnProps<T>[];
 }
 
 
@@ -23,11 +24,20 @@ interface ColumnItemProps<T> extends ColumnHeader<T> {
 }
 
 export const ColumnHeader: FunctionComponent<ColumnHeader<any>> = <T extends object>(props: PropsWithChildren<ColumnHeader<T>>) => {
-  const { title, style } = props;
-  return <div className="column-header" style={style || {}}>
+  const { title, style, children } = props;
+  return !children ? <div className={"column-header"} style={style || {}}>
     {title}
-  </div>
+  </div> : <div className="column-header group" style={style || {}}>
+      <div className="parent-title">
+        {title}
+      </div>
+      <div className="children" style={{ gridTemplateColumns: `repeat(${children.length}, 1fr)` }}>
+        {(children as ColumnProps<T>[]).map((child) => <ColumnHeader {...child} />)}
+      </div>
+    </div>
 }
+
+
 
 const renderItem = <T extends object>(props: PropsWithChildren<ColumnItemProps<T>>) => {
   if (props.render) {
@@ -40,10 +50,12 @@ const renderItem = <T extends object>(props: PropsWithChildren<ColumnItemProps<T
 };
 
 export const ColumnItem: FunctionComponent<ColumnItemProps<any>> = <T extends object>(props: PropsWithChildren<ColumnItemProps<T>>) => {
-  const { record, index, dataIndex, titleRender, style } = props;
+  const { record, index, dataIndex, titleRender, style, children } = props;
   return <Tooltip title={titleRender ? titleRender(record, index) : dataIndex ? (record[dataIndex] || "") : ""} placement="topLeft">
-    <div className="column-item" style={style || {}}>
+    {!children ? <div className="column-item" style={style || {}}>
       {renderItem(props)}
-    </div>
+    </div> : <div className="column-item group" style={Object.assign({}, style, { gridTemplateColumns: `repeat(${children.length}, 1fr)` })}>
+        {children.map(child => <ColumnItem {...child} record={record} index={index} triggerReload={props.triggerReload} />)}
+      </div>}
   </Tooltip>
 }

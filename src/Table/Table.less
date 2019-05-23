@@ -16,6 +16,8 @@
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
+    min-height: @min-row-height;
+    height: 100%;
   }
   &.bordered {
     .base-item {
@@ -44,7 +46,8 @@
   .table-container {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: @min-row-height auto;
+    grid-template-rows: minmax(@min-row-height, auto) auto;
+    background-color: @header-background;
     .header {
       display: grid;
       position: sticky;
@@ -54,19 +57,38 @@
         .base-item;
         background-color: @header-background;
         border-bottom: 1px solid @border-color;
+        &.group {
+          display: grid;
+          grid-template-columns: 1fr;
+          padding: 0;
+          border-bottom: none;
+          .parent-title {
+            .base-item;
+            background-color: @header-background;
+            border-bottom: 1px solid @border-color;
+            border-right: none;
+          }
+          .children {
+            display: grid;
+            grid-template-rows: minmax(@min-row-height, 1fr);
+          }
+        }
       }
     }
     .body {
       display: grid;
+      background-color: #fff;
       .row {
         display: grid;
         border-bottom: 1px solid @border-color;
         .column-item {
           .base-item;
           background-color: white;
-          &.auto-fill {
-            background-color: transparent;
-            pointer-events: none;
+          &.group {
+            display: grid;
+            grid-template-columns: 1fr;
+            padding: 0;
+            border: none;
           }
         }
       }

@@ -15,7 +15,7 @@ const loadData: LoadData<User> = (query) => new Promise(resolve => {
     resolve({
       data: Array.from({ length: query.size || 10 }, (_, index) => ({
         id: index + 1 + "",
-        name: '吴彦祖',
+        name: '铪',
         age: 32 + index,
         address: '西湖区湖底公园1号',
         description: "这是一条毫无用处的描述".repeat(index === 1 ? 4 : 1)
@@ -30,10 +30,20 @@ const loadData: LoadData<User> = (query) => new Promise(resolve => {
 const columns: ColumnProps<User>[] = [
   {
     title: "姓名",
-    dataIndex: "name",
+    key: "1",
     titleRender: (record) => "我是" + record.name,
     width: 200,
-    fixed: "left"
+    fixed: "left",
+    children: [{
+      title: "姓氏",
+      key: "1-1",
+      dataIndex: "age"
+    },
+    {
+      title: "名字",
+      key: "1-2",
+      children: [{ title: "名", key: "2-1", dataIndex: "name", }, { title: "字", key: "2-2", dataIndex: "name", }]
+    }]
   },
   {
     title: "年龄",
@@ -54,7 +64,6 @@ const columns: ColumnProps<User>[] = [
     title: "操作",
     key: "operation",
     width: 250,
-    fixed: "right",
     render: (record, _, reloadData) => <div>
       <Button type="link" onClick={() => console.log(record)}>编辑</Button>
       <Divider type="vertical" />
@@ -71,10 +80,11 @@ const App: React.FunctionComponent = (): React.ReactElement => {
       columns={columns}
       loadData={loadData}
       rowKey="id"
+      bordered
       pagination={{}}
       scroll={{
         x: true,
-        y: 600
+        y: 400
       }}
     />
   );
